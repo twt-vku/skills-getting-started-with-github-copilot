@@ -19,62 +19,101 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
-        const participantsMarkup =
-          details.participants.length > 0
-            ? details.participants
-                .map((participant) => `<li><span>${participant}</span><button class="delete-btn" data-activity="${name}" data-email="${participant}" title="Delete ${participant}">✕</button></li>`)
-                .join("")
-            : "<li><span>No participants yet</span></li>";
 
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants-section">
-            <p class="participants-title"><strong>Participants</strong></p>
-            <ul class="participants-list">
-              ${participantsMarkup}
-            </ul>
-          </div>
-        `;
+        const title = document.createElement("h4");
+        title.textContent = name;
+        activityCard.appendChild(title);
 
-        activitiesList.appendChild(activityCard);
+        const description = document.createElement("p");
+        description.textContent = details.description;
+        activityCard.appendChild(description);
 
-        // Add delete button event listeners
-        const deleteButtons = activityCard.querySelectorAll(".delete-btn");
-        deleteButtons.forEach((btn) => {
-          btn.addEventListener("click", async (event) => {
-            event.preventDefault();
-            const activity = btn.getAttribute("data-activity");
-            const email = btn.getAttribute("data-email");
+        const schedule = document.createElement("p");
+        const scheduleLabel = document.createElement("strong");
+        scheduleLabel.textContent = "Schedule:";
+        schedule.appendChild(scheduleLabel);
+        schedule.appendChild(document.createTextNode(` ${details.schedule}`));
+        activityCard.appendChild(schedule);
 
-            try {
-              const response = await fetch(
-                `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
-                {
-                  method: "DELETE",
+        const availability = document.createElement("p");
+        const availabilityLabel = document.createElement("strong");
+        availabilityLabel.textContent = "Availability:";
+        availability.appendChild(availabilityLabel);
+        availability.appendChild(document.createTextNode(` ${spotsLeft} spots left`));
+        activityCard.appendChild(availability);
+
+        const participantsSection = document.createElement("div");
+        participantsSection.className = "participants-section";
+
+        const participantsTitle = document.createElement("p");
+        participantsTitle.className = "participants-title";
+        const participantsStrong = document.createElement("strong");
+        participantsStrong.textContent = "Participants";
+        participantsTitle.appendChild(participantsStrong);
+        participantsSection.appendChild(participantsTitle);
+
+        const participantsList = document.createElement("ul");
+        participantsList.className = "participants-list";
+
+        if (details.participants.length > 0) {
+          details.participants.forEach((participant) => {
+            const participantItem = document.createElement("li");
+
+            const participantName = document.createElement("span");
+            participantName.textContent = participant;
+            participantItem.appendChild(participantName);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete-btn";
+            deleteButton.dataset.activity = name;
+            deleteButton.dataset.email = participant;
+            deleteButton.title = `Delete ${participant}`;
+            deleteButton.textContent = "✕";
+
+            deleteButton.addEventListener("click", async (event) => {
+              event.preventDefault();
+              const activity = deleteButton.dataset.activity;
+              const email = deleteButton.dataset.email;
+
+              try {
+                const response = await fetch(
+                  `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+                  {
+                    method: "DELETE",
+                  }
+                );
+
+                if (response.ok) {
+                  // Reload activities to reflect the change
+                  fetchActivities();
+                } else {
+                  const result = await response.json();
+                  messageDiv.textContent = result.detail || "Failed to unregister";
+                  messageDiv.className = "error";
+                  messageDiv.classList.remove("hidden");
+                  setTimeout(() => {
+                    messageDiv.classList.add("hidden");
+                  }, 5000);
                 }
-              );
-
-              if (response.ok) {
-                // Reload activities to reflect the change
-                fetchActivities();
-              } else {
-                const result = await response.json();
-                messageDiv.textContent = result.detail || "Failed to unregister";
-                messageDiv.className = "error";
-                messageDiv.classList.remove("hidden");
-                setTimeout(() => {
-                  messageDiv.classList.add("hidden");
-                }, 5000);
+              } catch (error) {
+                console.error("Error unregistering:", error);
               }
-            } catch (error) {
-              console.error("Error unregistering:", error);
-            }
-          });
-        });
+            });
 
+            participantItem.appendChild(deleteButton);
+            participantsList.appendChild(participantItem);
+          });
+        } else {
+          const emptyItem = document.createElement("li");
+          const emptyText = document.createElement("span");
+          emptyText.textContent = "No participants yet";
+          emptyItem.appendChild(emptyText);
+          participantsList.appendChild(emptyItem);
+        }
+
+        participantsSection.appendChild(participantsList);
+        activityCard.appendChild(participantsSection);
+        activitiesList.appendChild(activityCard);
         // Add option to select dropdown
         const option = document.createElement("option");
         option.value = name;
