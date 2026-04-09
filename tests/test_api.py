@@ -14,7 +14,7 @@ def test_root_redirects_to_static_index(client):
 
 def test_get_activities_returns_all_seeded_activities(client):
     # Arrange
-    expected_count = 9
+    expected_count = len(app_module.activities)
 
     # Act
     response = client.get("/activities")
